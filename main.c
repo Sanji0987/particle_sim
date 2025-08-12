@@ -65,7 +65,6 @@ void init(window_struct window_info, SDL_Window **window, SDL_Renderer **rendere
         SDL_DestroyWindow(*window);
         SDL_Quit();
     }
-
     partype parvar;
     for (int i= 0 ; i < no_of_particles ; i++){
         double angle = ((double)rand() / (double)RAND_MAX) * 2.0 * M_PI;
