@@ -142,6 +142,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         //collision handling
         float repulsion_factor;
 
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < no_of_particles; i++) {
             for (int j = i + 1; j < no_of_particles; j++) {
 

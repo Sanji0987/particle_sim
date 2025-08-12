@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(particle_sim C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fopenmp")
 
 # Source files
 set(SOURCES main.c)
