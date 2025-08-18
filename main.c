@@ -5,8 +5,6 @@
 #include <math.h>
 #include "hashtable.h"
 
-#define NK_IMPLEMENTATION
-#include "nuklear.h"
 
 #define no_of_particles 1000
 #define upper_bound 1500
