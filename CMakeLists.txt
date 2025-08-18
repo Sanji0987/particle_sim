@@ -5,7 +5,10 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fopenmp")
 
 # Source files
-set(SOURCES main.c)
+set(SOURCES main.c
+        hashtable.c
+        hashtable.h
+)
 
 # Find SDL2
 find_package(SDL2 REQUIRED)

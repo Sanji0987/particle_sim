@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <math.h>
+#include "hashtable.h"
 
+#define NK_IMPLEMENTATION
+#include "nuklear.h"
 
 #define no_of_particles 1000
 #define upper_bound 1500
@@ -20,18 +23,18 @@ void cleanup(SDL_Window *window, SDL_Renderer *renderer);
 typedef enum  {
     proton =1 ,
     electron=-1
-}partype;
+}particle_type;
 
 typedef struct {
     float x, y;      // Position
     float vx, vy;// Velocity
-    partype partype;
+    particle_type pType;
 } Particle;
 
 
 typedef struct{
         const char *title;
-        int xpos, ypos;
+        int x_pos, y_pos;
         int width ;
         int height;
         Uint32 flags;
@@ -49,7 +52,7 @@ void init(window_struct window_info, SDL_Window **window, SDL_Renderer **rendere
 
 
 
-    *window = SDL_CreateWindow(window_info.title,window_info.xpos , window_info.ypos , window_info.width , window_info.height, window_info.flags);
+    *window = SDL_CreateWindow(window_info.title,window_info.x_pos , window_info.y_pos , window_info.width , window_info.height, window_info.flags);
 
     if (*window == NULL){
         printf("error creating window: %s\n", SDL_GetError());
@@ -66,37 +69,47 @@ void init(window_struct window_info, SDL_Window **window, SDL_Renderer **rendere
         SDL_Quit();
     }
 
-    partype parvar;
+
     for (int i= 0 ; i < no_of_particles ; i++){
         double angle = ((double)rand() / (double)RAND_MAX) * 2.0 * M_PI;
-        float random_vx = (float) ((rand() % (5 - 1 + 1)+ 1) * cos(angle));
-        float random_vy = (float) ((rand() % (6 - 2 + 1)+ 2) * sin(angle));
+        double random_vx = ((rand() % (5 - 1 + 1)+ 1) * cos(angle));
+        double random_vy =  ((rand() % (6 - 2 + 1)+ 2) * sin(angle));
 
 
 
-        float vx = random_vx * pow(-1,i);
-        float vy = random_vy * pow(-1,i+1);
+        float vx = (float)(random_vx * pow(-1,i));
+        float vy = (float)(random_vy * pow(-1,i+1));
+        particle_type particle_var;
+        if (pow(-1, i)< 0) particle_var = proton;
+        else   particle_var = electron;
 
-        if (pow(-1, i)< 0) parvar = proton;
-        else  parvar = electron;
-
-        particle_array[i]=(Particle){(float)((rand() % (upper_bound - lower_bound + 1)+ lower_bound)), (float)((rand() % (700 - 200 + 1)+ 200)) , vx, vy, parvar};
+        particle_array[i]=(Particle){(float)((rand() % (upper_bound - lower_bound + 1)+ lower_bound)), (float)((rand() % (700 - 200 + 1)+ 200)) , vx, vy, particle_var};
     }
-
 }
+
+
 
 void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
     bool running = true;
     SDL_Event event;
+    float repulsion_factor = 5.0f;
 
     while (running){
+        entry *hashtable = hashtableint();
         while (SDL_PollEvent(&event)){
             if (event.type == SDL_QUIT){
                 running= false;
             }
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE){
                 running = false;
+
+            }
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE) {
+                if (repulsion_factor > 50.0f) {
+                    printf("\ntoo too much value\n");
+                }
+                else repulsion_factor += 25.0f;
 
             }
 
@@ -140,8 +153,78 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         }
 
         //collision handling
-        float repulsion_factor;
 
+        for (int i= 0 ; i < no_of_particles; i++) {
+            addindex(hashtable,(int)p[i].x/10,i);
+        }
+
+        for (int i = 0; i < no_of_particles; i++) {
+            int cell = (int)p[i].x/10;
+            int *bucket = getindex( hashtable, cell);
+            int bucket_count= bucketcount(hashtable, cell) ;
+
+            for (int k = 0 ; k < bucket_count; k++) {
+
+
+                int j = bucket[k];
+                if (j <= i) continue;
+
+                float dx = p[i].x - p[j].x;
+                float dy = p[i].y - p[j].y;
+                float distSq = (dx * dx) + (dy * dy);
+                float dist = sqrtf(distSq);
+
+
+                if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
+
+                // d^2 = repulsion factor / Fmin
+                const float f_min = 0.01f;
+                const float min_distSq = repulsion_factor / f_min;
+                if (distSq > min_distSq ) continue;
+
+
+                // unit vector between two part
+                float nx = dx / dist;
+                float ny = dy / dist;
+
+                // Attraction / Repulsion factor
+                // Same type → repulsion (+), different type → attraction (-)
+                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
+
+                // Strength of force (inverse square falloff)
+                float strength = forceDir * (repulsion_factor / distSq);
+
+                if (strength > 15.0f) strength = 30.0f;
+                if (strength < -15.0f) strength = -30.0f;
+
+
+                // Apply acceleration
+
+                p[i].vx += nx * strength;
+                p[i].vy += ny * strength;
+                p[j].vx -= nx * strength;
+                p[j].vy -= ny * strength;
+
+            }
+
+        }
+
+
+
+
+        // my weird way of a debug
+        /*
+        for (int i= 0 ; i < hashtable[calchash(0)].capacity; i++) {
+            if (hashtable[calchash(0)].index_arr[i] != 0 && hashtable[calchash(0)].index_arr[i] != '\0' ) {
+                printf("%d\n", hashtable[calchash(0)].index_arr[i]);
+                printf("\nTHIS IS A BREAK LINE\n");
+            }
+        }
+        */
+
+
+
+        /*
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < no_of_particles; i++) {
             for (int j = i + 1; j < no_of_particles; j++) {
@@ -149,7 +232,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
                 float dx = p[i].x - p[j].x;
                 float dy = p[i].y - p[j].y;
                 float distSq = (dx * dx) + (dy * dy);
-                float dist = sqrtf(distSq);
+                float dist = sqrt(distSq);
 
 
 
@@ -161,14 +244,13 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
                 // Attraction / Repulsion factor
                 // Same type → repulsion (+), different type → attraction (-)
-                float forceDir = (p[i].partype == p[j].partype) ? 1.0f : -1.0f;
+                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
 
                 // Strength of force (inverse square falloff)
-                repulsion_factor = 5.0f;
                 float strength = forceDir * (repulsion_factor / distSq);
 
-                if (strength > 5.0f) strength = 5.0f;
-                if (strength < -5.0f) strength = -5.0f;
+                if (strength > 15.0f) strength = 30.0f;
+                if (strength < -15.0f) strength = -30.0f;
 
 
                 // Apply acceleration
@@ -179,6 +261,9 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
                 p[j].vy -= ny * strength;
             }
         }
+        */
+
+
 
 
         //clear last frame
@@ -186,7 +271,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         SDL_RenderClear(renderer);
 
         for (int i= 0 ; i < no_of_particles ; i++) {
-            if (p[i].partype== proton) SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+            if (p[i].pType== proton) SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
             else SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 
             SDL_Rect particle_rect = {(int)p[i].x, (int)p[i].y, particle_width, particle_height};
@@ -194,7 +279,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
         }
 
-
+        free(hashtable);
         SDL_RenderPresent(renderer);
         SDL_Delay((Uint32)16); // 60 fps
     }
