@@ -303,8 +303,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         }
 
 
-
-
+        
         // my weird way of a debug
         /*
         for (int i= 0 ; i < hashtable[calchash(0)].capacity; i++) {
