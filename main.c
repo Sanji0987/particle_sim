@@ -107,7 +107,8 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
             }
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE) {
                 if (repulsion_factor > 50.0f) {
-                    printf("\ntoo too much value\n");
+                    printf("\nThe value is now : %f", repulsion_factor);
+                    repulsion_factor += 25.0f;
                 }
                 else repulsion_factor += 25.0f;
 
@@ -153,157 +154,65 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         }
 
         //collision handling
-
         for (int i= 0 ; i < no_of_particles; i++) {
-            addindex(hashtable,(int)p[i].x/10,i);
-        }
-
-        for (int i = 0; i < no_of_particles; i++) {
             int cell = (int)p[i].x/10;
-            int left_cell = cell -1;
-            int right_cell = cell +1;
-            // abstrct the bucket code
+            addindex(hashtable,cell,i);
+        }
 
-            int *bucket = getindex( hashtable, cell);
-            int bucket_count= bucketcount(hashtable, cell) ;
+        int neighbour_calc[3] = {-1 , 0 , 1};
+        for (int i = 0; i < no_of_particles; i++) {
+            for (int z = 0 ; z < 3; z++) {
+                // force calc as k , outer loop z for neighbouring cells
+                int cell = (int) p[i].x / 10 + neighbour_calc[z];
 
-            for (int k = 0 ; k < bucket_count; k++) {
+                int *bucket = getindex(hashtable, cell);
+                int bucket_count = bucketcount(hashtable, cell);
 
+                for (int k = 0 ; k < bucket_count; k++) {
 
-                int j = bucket[k];
-                if (j <= i) continue;
+                    int j = bucket[k];
+                    if (j <= i) continue;
 
-                float dx = p[i].x - p[j].x;
-                float dy = p[i].y - p[j].y;
-                float distSq = (dx * dx) + (dy * dy);
-                float dist = sqrtf(distSq);
-
-
-                if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
-
-                // d^2 = repulsion factor / Fmin
-                const float f_min = 0.01f;
-                const float min_distSq = repulsion_factor / f_min;
-                if (distSq > min_distSq ) continue;
+                    float dx = p[i].x - p[j].x;
+                    float dy = p[i].y - p[j].y;
+                    float distSq = (dx * dx) + (dy * dy);
+                    float dist = sqrtf(distSq);
 
 
-                // unit vector between two part
-                float nx = dx / dist;
-                float ny = dy / dist;
+                    if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
 
-                // Attraction / Repulsion factor
-                // Same type → repulsion (+), different type → attraction (-)
-                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
-
-                // Strength of force (inverse square falloff)
-                float strength = forceDir * (repulsion_factor / distSq);
-
-                if (strength > 15.0f) strength = 30.0f;
-                if (strength < -15.0f) strength = -30.0f;
-
-                // Apply acceleration
-
-                p[i].vx += nx * strength;
-                p[i].vy += ny * strength;
-                p[j].vx -= nx * strength;
-                p[j].vy -= ny * strength;
-
-            }
-
-            bucket = getindex( hashtable, left_cell);
-            bucket_count= bucketcount(hashtable, left_cell) ;
-            for (int k = 0 ; k < bucket_count; k++) {
+                    // d^2 = repulsion factor / Fmin
+                    const float f_min = 0.01f;
+                    const float min_distSq = repulsion_factor / f_min;
+                    if (distSq > min_distSq ) continue;
 
 
-                int j = bucket[k];
-                if (j <= i) continue;
+                    // unit vector between two part
+                    float nx = dx / dist;
+                    float ny = dy / dist;
 
-                float dx = p[i].x - p[j].x;
-                float dy = p[i].y - p[j].y;
-                float distSq = (dx * dx) + (dy * dy);
-                float dist = sqrtf(distSq);
+                    // Attraction / Repulsion factor
+                    // Same type → repulsion (+), different type → attraction (-)
+                    float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
 
+                    // Strength of force (inverse square falloff)
+                    const float epsilon = 0.01f;
+                    float distance_factor = distSq + epsilon;
+                    float strength = forceDir * (repulsion_factor / distance_factor);
 
-                if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
+                    // Apply acceleration
+                    p[i].vx += nx * strength;
+                    p[i].vy += ny * strength;
+                    p[j].vx -= nx * strength;
+                    p[j].vy -= ny * strength;
 
-                // d^2 = repulsion factor / Fmin
-                const float f_min = 0.01f;
-                const float min_distSq = repulsion_factor / f_min;
-                if (distSq > min_distSq ) continue;
-
-
-                // unit vector between two part
-                float nx = dx / dist;
-                float ny = dy / dist;
-
-                // Attraction / Repulsion factor
-                // Same type → repulsion (+), different type → attraction (-)
-                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
-
-                // Strength of force (inverse square falloff)
-                float strength = forceDir * (repulsion_factor / distSq);
-
-                if (strength > 15.0f) strength = 30.0f;
-                if (strength < -15.0f) strength = -30.0f;
-
-                // Apply acceleration
-
-                p[i].vx += nx * strength;
-                p[i].vy += ny * strength;
-                p[j].vx -= nx * strength;
-                p[j].vy -= ny * strength;
+                }
 
             }
-
-            bucket = getindex( hashtable, right_cell);
-            bucket_count= bucketcount(hashtable, right_cell) ;
-            for (int k = 0 ; k < bucket_count; k++) {
-
-
-                int j = bucket[k];
-                if (j <= i) continue;
-
-                float dx = p[i].x - p[j].x;
-                float dy = p[i].y - p[j].y;
-                float distSq = (dx * dx) + (dy * dy);
-                float dist = sqrtf(distSq);
-
-
-                if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
-
-                // d^2 = repulsion factor / Fmin
-                const float f_min = 0.01f;
-                const float min_distSq = repulsion_factor / f_min;
-                if (distSq > min_distSq ) continue;
-
-
-                // unit vector between two part
-                float nx = dx / dist;
-                float ny = dy / dist;
-
-                // Attraction / Repulsion factor
-                // Same type → repulsion (+), different type → attraction (-)
-                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
-
-                // Strength of force (inverse square falloff)
-                float strength = forceDir * (repulsion_factor / distSq);
-
-                if (strength > 15.0f) strength = 30.0f;
-                if (strength < -15.0f) strength = -30.0f;
-
-                // Apply acceleration
-
-                p[i].vx += nx * strength;
-                p[i].vy += ny * strength;
-                p[j].vx -= nx * strength;
-                p[j].vy -= ny * strength;
-
-            }
-
         }
 
 
-        
+
         // my weird way of a debug
         /*
         for (int i= 0 ; i < hashtable[calchash(0)].capacity; i++) {
@@ -313,50 +222,6 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
             }
         }
         */
-
-
-
-        /*
-        #pragma omp parallel for schedule(static)
-        for (int i = 0; i < no_of_particles; i++) {
-            for (int j = i + 1; j < no_of_particles; j++) {
-
-                float dx = p[i].x - p[j].x;
-                float dy = p[i].y - p[j].y;
-                float distSq = (dx * dx) + (dy * dy);
-                float dist = sqrt(distSq);
-
-
-
-                if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
-
-                // unit vector between two part
-                float nx = dx / dist;
-                float ny = dy / dist;
-
-                // Attraction / Repulsion factor
-                // Same type → repulsion (+), different type → attraction (-)
-                float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
-
-                // Strength of force (inverse square falloff)
-                float strength = forceDir * (repulsion_factor / distSq);
-
-                if (strength > 15.0f) strength = 30.0f;
-                if (strength < -15.0f) strength = -30.0f;
-
-
-                // Apply acceleration
-
-                p[i].vx += nx * strength;
-                p[i].vy += ny * strength;
-                p[j].vx -= nx * strength;
-                p[j].vy -= ny * strength;
-            }
-        }
-        */
-
-
-
 
         //clear last frame
         SDL_SetRenderDrawColor(renderer,30, 30, 30, 255);
