@@ -5,7 +5,6 @@
 #include <math.h>
 #include "hashtable.h"
 
-
 #define no_of_particles 1000
 #define upper_bound 1500
 #define lower_bound 100
@@ -180,7 +179,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
                     if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
 
                     // d^2 = repulsion factor / Fmin
-                    const float f_min = 0.01f;
+                    const float f_min = 0.1f;
                     const float min_distSq = repulsion_factor / f_min;
                     if (distSq > min_distSq ) continue;
 
@@ -210,16 +209,6 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
         }
 
 
-
-        // my weird way of a debug
-        /*
-        for (int i= 0 ; i < hashtable[calchash(0)].capacity; i++) {
-            if (hashtable[calchash(0)].index_arr[i] != 0 && hashtable[calchash(0)].index_arr[i] != '\0' ) {
-                printf("%d\n", hashtable[calchash(0)].index_arr[i]);
-                printf("\nTHIS IS A BREAK LINE\n");
-            }
-        }
-        */
 
         //clear last frame
         SDL_SetRenderDrawColor(renderer,30, 30, 30, 255);
