@@ -1,5 +1,4 @@
 #include "hashtable.h"
-
 // using the cell no to create hashes
 
 int calchash(const int cell){

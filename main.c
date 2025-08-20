@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 #include "hashtable.h"
+#include "ui.h"
 
 #define no_of_particles 1000
 #define upper_bound 1500
@@ -14,8 +15,6 @@
 #define particle_width 6
 #define particle_height 6
 
-
-void cleanup(SDL_Window *window, SDL_Renderer *renderer);
 
 typedef enum  {
     proton =1 ,
@@ -29,43 +28,7 @@ typedef struct {
 } Particle;
 
 
-typedef struct{
-        const char *title;
-        int x_pos, y_pos;
-        int width ;
-        int height;
-        Uint32 flags;
-}window_struct;
-
-
-
-void init(window_struct window_info, SDL_Window **window, SDL_Renderer **renderer, Particle *particle_array){
-    SDL_SetHint("SDL_VIDEODRIVER", "x11");
-    if (SDL_Init(SDL_INIT_VIDEO) <0 ){
-        printf("Could not init sdl : %s\n", SDL_GetError());
-        SDL_Quit();
-    }
-
-
-
-
-    *window = SDL_CreateWindow(window_info.title,window_info.x_pos , window_info.y_pos , window_info.width , window_info.height, window_info.flags);
-
-    if (*window == NULL){
-        printf("error creating window: %s\n", SDL_GetError());
-        SDL_Quit();
-        SDL_Quit();;
-    }
-
-    *renderer = SDL_CreateRenderer(*window, -1 , SDL_RENDERER_ACCELERATED);
-
-
-    if(*renderer == NULL){
-        printf("Renderer init failed:%s\n", SDL_GetError());
-        SDL_DestroyWindow(*window);
-        SDL_Quit();
-    }
-
+void particle_array_init(Particle *particle_array){
 
     for (int i= 0 ; i < no_of_particles ; i++){
         double angle = ((double)rand() / (double)RAND_MAX) * 2.0 * M_PI;
@@ -80,13 +43,21 @@ void init(window_struct window_info, SDL_Window **window, SDL_Renderer **rendere
         if (pow(-1, i)< 0) particle_var = proton;
         else   particle_var = electron;
 
-        particle_array[i]=(Particle){(float)((rand() % (upper_bound - lower_bound + 1)+ lower_bound)), (float)((rand() % (700 - 200 + 1)+ 200)) , vx, vy, particle_var};
+        particle_array[i]=(Particle)
+        {(float)((rand() % (upper_bound - lower_bound + 1)+ lower_bound)),
+            (float)((rand() % (700 - 200 + 1)+ 200)) ,
+            vx,
+            vy,
+            particle_var
+        };
     }
 }
 
 
+void run(SDL_Window *window , SDL_Renderer *renderer, SDL_Window *ui_window,SDL_Renderer *ui_renderer,Particle *p,
+         window_struct ui_window_info){
 
-void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
+    bool ui_present = false;
 
     bool running = true;
     SDL_Event event;
@@ -94,24 +65,44 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
     while (running){
         entry *hashtable = hashtableint();
+        Uint32 main_id = SDL_GetWindowID(window);
+        Uint32 ui_id = ui_window ? SDL_GetWindowID(ui_window) : 0;
+
+        // main window
         while (SDL_PollEvent(&event)){
+
             if (event.type == SDL_QUIT){
                 running= false;
             }
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE){
-                running = false;
+
+            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE){
+                if (main_id == event.window.windowID) {
+                    running = false;
+                }
+                if (ui_present == true & ui_id == event.window.windowID) {
+                    cleanup(ui_window, ui_renderer);
+                    ui_present = false;
+                    ui_window = NULL;
+                    ui_renderer = NULL;
+                }
 
             }
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_SPACE) {
+                if (ui_present == false) window_renderer_init(ui_window_info, &ui_window, &ui_renderer);
+                ui_present = true;
+
+            }
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_TAB) {
                 if (repulsion_factor > 50.0f) {
                     printf("\nThe value is now : %f", repulsion_factor);
                     repulsion_factor += 25.0f;
                 }
                 else repulsion_factor += 25.0f;
 
-            }
 
+            }
         }
+        if (!running) break;
         for (int i = 0; i < no_of_particles; i++) {
             // initial vx , vy = 0
             float bottom_line = (float)(window_height-particle_height);
@@ -178,6 +169,7 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
                     if (dist == 0.0f) dist = 0.0001f; // prevent div-by-zero
 
+
                     // d^2 = repulsion factor / Fmin
                     const float f_min = 0.1f;
                     const float min_distSq = repulsion_factor / f_min;
@@ -193,7 +185,8 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
                     float forceDir = (p[i].pType == p[j].pType) ? 1.0f : -1.0f;
 
                     // Strength of force (inverse square falloff)
-                    const float epsilon = 0.01f;
+                    // without epsilon all particles reach forces that end to inf very fast
+                    const float epsilon = 0.001f;
                     float distance_factor = distSq + epsilon;
                     float strength = forceDir * (repulsion_factor / distance_factor);
 
@@ -225,33 +218,28 @@ void run(SDL_Window *window , SDL_Renderer *renderer, Particle *p){
 
         free(hashtable);
         SDL_RenderPresent(renderer);
+        if (ui_present) SDL_RenderPresent(ui_renderer);
         SDL_Delay((Uint32)16); // 60 fps
     }
+    cleanup(ui_window, ui_renderer);
+         }
 
+         int main(){
+             window_struct window_info = {"Particle Sim",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, window_width , window_height , 0};
+             window_struct ui_window_info = {"UI",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,500 ,500 ,0};
+             SDL_Window *window = NULL;
+             SDL_Renderer *renderer= NULL;
+             SDL_Window *ui_window = NULL;
+             SDL_Renderer *ui_renderer= NULL;
 
+             Particle particle_array[no_of_particles];
 
+             window_renderer_init(window_info, &window , &renderer);
+             particle_array_init(particle_array);
 
-}
+             run(window , renderer ,ui_window, ui_renderer, particle_array, ui_window_info);
 
-void cleanup(SDL_Window *window, SDL_Renderer *renderer){
+             cleanup(window , renderer);
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
-}
-
-int main(){
-    window_struct window_info = {"Particle Sim",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, window_width , window_height , 0};
-    SDL_Window *window = NULL;
-    SDL_Renderer *renderer= NULL;
-    Particle particle_array[no_of_particles];
-
-    init(window_info, &window , &renderer ,particle_array);
-
-    run(window , renderer, particle_array);
-
-    cleanup(window , renderer);
-
-    return 0;
-}
+             return 0;
+         }
