@@ -8,8 +8,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fopenmp")
 set(SOURCES main.c
         hashtable.c
         hashtable.h
-        ui.h
-        ui.c
 )
 
 # Find SDL2
