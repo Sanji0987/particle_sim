@@ -16,9 +16,9 @@ entry* hashtableint(){
 
     for (int i = 0 ; i < tablesize; i++){
         hashtable[i].cell = 0;
-        hashtable[i].index_arr = (int*)calloc(20, sizeof(int));
+        hashtable[i].index_arr = (int*)calloc(initial_bucket_cap, sizeof(int));
         hashtable[i].count = 0 ;
-        hashtable[i].capacity = 20;
+        hashtable[i].capacity = initial_bucket_cap;
         hashtable[i].status = EMPTY;
     }
     return hashtable;

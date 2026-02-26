@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define tablesize 160
+#define initial_bucket_cap 20
 
 typedef enum {
     EMPTY,
