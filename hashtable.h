@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #define tablesize 2048
 #define initial_bucket_cap 20
 
@@ -14,7 +15,7 @@ typedef enum {
 
 
 typedef struct entry{
-    int cell;
+    int64_t cell;
     int *index_arr;
     int count;
     int capacity;
@@ -22,14 +23,15 @@ typedef struct entry{
 }entry;
 
 
-int calchash(int cell);
+int calchash(int64_t cell);
 
 entry* hashtableint();
 
-void addindex(entry *hashtable ,int cell ,  int index);
+void addindex(entry *hashtable ,int64_t cell ,  int index);
 
-int* getindex(entry *hashtable , int cell);
-int bucketcount(entry *hashtable, int cell) ;
+void hashtablefree(entry *hashtable);
+int* getindex(entry *hashtable , int64_t cell);
+int bucketcount(entry *hashtable, int64_t cell) ;
 
 
 #endif // HASHTABLE_H_

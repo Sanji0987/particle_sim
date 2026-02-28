@@ -36,7 +36,3 @@ make
 ## How it works
 
 Particles live in a large world space and interact via inverse-square Coulomb forces. A spatial hash grid bins particles by 2D position so only nearby pairs are checked — roughly O(n) instead of O(n^2). Newton's third law is applied so each pair is computed once. Wall collisions bounce particles with configurable energy loss. The rendering pipeline transforms world coordinates through a camera (position + zoom) to screen space.
-
-## C-Python integration
-
-The control panel is a Python tkinter app that talks to the C sim in real time. I use `fork()` and `execlp()` to spawn the Python process from C, and both sides share memory using `mmap` with POSIX shared memory — I went with this for simplicity to avoid having to deal with sockets or files.
