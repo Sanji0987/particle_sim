@@ -22,4 +22,5 @@ target_include_directories(particle_sim PRIVATE
 target_link_libraries(particle_sim
         ${SDL2_LIBRARIES}
         m
+        rt
 )
